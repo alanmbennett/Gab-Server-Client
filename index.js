@@ -195,9 +195,29 @@ let userListBox = blessed.box (
     top: '15%',
     right: 0,
     width: '30%',
-    height: '75%',
+    height: '40%',
     scrollable: true, 
     content: 'Users in the Chat: ',
+    border: {
+        type: 'line'
+    },
+   style: {
+    fg: 'white',
+    transparent: true,
+    border: {
+      fg: '#ffffff'
+    }
+  }
+});
+
+let commandBox = blessed.box (
+{
+    top: '54%',
+    right: 0,
+    width: '30%',
+    height: '35%',
+    scrollable: true, 
+    content: 'Commands:\n Whisper/DM: \\w USERNAME MESSAGE',
     border: {
         type: 'line'
     },
@@ -317,13 +337,14 @@ function printMsg(jsonMsg)
     {
         chatbox.pushLine(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${jsonMsg.data} `);
     }
+    
     chatbox.setScrollPerc(100);
     mainScreen.render();
 }
 
 function sendMsg(conn, msg)
 {
-    let whisperRegex = new RegExp('\\w ([a-zA-Z0-9]{0,10}) .+');
+    let whisperRegex = /\\w ([a-zA-Z0-9]{0,10}) .+/;
      if(msg && msg.length !== 0)
      {
          if(whisperRegex.test(msg))
@@ -370,6 +391,7 @@ function makeConnection()
     mainScreen.append(enterButton);
     mainScreen.append(userBox);
     mainScreen.append(userListBox);
+    mainScreen.append(commandBox);
     mainScreen.append(logoutButton);
     mainScreen.title = `Chatroom connection: ${actualPath}`;
     mainScreen.render();
