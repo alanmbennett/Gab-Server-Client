@@ -217,7 +217,7 @@ let commandBox = blessed.box (
     width: '30%',
     height: '35%',
     scrollable: true, 
-    content: 'Commands:\n Whisper/DM: \\w USERNAME MESSAGE',
+    content: 'Commands:\n Whisper/DM: \\w USERNAME MESSAGE \n Get user list: \\userlist \n Check username: \\whoami ',
     border: {
         type: 'line'
     },
@@ -277,7 +277,7 @@ let enterButton = blessed.button(
     border: {
         type: 'line'
     },
-    content: 'Enter',
+    content: 'Send',
     align: 'center',
     mouse: true,
     style: {
@@ -345,20 +345,32 @@ function printMsg(jsonMsg)
 function sendMsg(conn, msg)
 {
     let whisperRegex = /\\w ([a-zA-Z0-9]{0,10}) .+/;
-     if(msg && msg.length !== 0)
-     {
-         if(whisperRegex.test(msg))
-         {
-             let data = msg.replace(/(\\w [a-zA-Z0-9]{0,10}) /, '');
-             let to = msg.split(/\\w ([a-zA-Z0-9]{0,10}) .+/);
-             conn.send(JSON.stringify(createMsg('direct', data, to[1])));
-             printMsg(createMsg('direct', data, to[1]));
-         }
-         else
-         {
-             conn.send(JSON.stringify(createMsg('chat', msg)));
-         }
-     }
+    let userlistRegex = /\\userlist/;
+    let whoamiRegex = /\\whoami/;
+    if(msg && msg.length !== 0)
+    {
+        if(whisperRegex.test(msg))
+        {
+            let data = msg.replace(/(\\w [a-zA-Z0-9]{0,10}) /, '');
+            let to = msg.split(/\\w ([a-zA-Z0-9]{0,10}) .+/);
+            conn.send(JSON.stringify(createMsg('direct', data, to[1])));
+            printMsg(createMsg('direct', data, to[1]));
+        }
+        else if(userlistRegex.test(msg))
+        {
+             conn.send(JSON.stringify(createMsg('userlist', '', '')));
+             printMsg(createMsg('chat', msg));
+        }
+        else if(whoamiRegex.test(msg))
+        {
+             conn.send(JSON.stringify(createMsg('whoami', '', '')));
+             printMsg(createMsg('chat', msg));
+        }
+        else
+        {
+            conn.send(JSON.stringify(createMsg('chat', msg)));
+        }
+    }
 }
 
 function addUsers(obj)
