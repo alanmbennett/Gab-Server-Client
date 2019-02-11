@@ -59,6 +59,17 @@ let connectionText = blessed.Text({
     content: 'Connection'
 });
 
+let errText = blessed.Text({
+    parent: usernameForm,
+    hidden: true,
+    top: '75%',
+    left: 0,
+    content: 'Error: Username must be alphanumeric ranging from 3 to 10 characters. ',
+    style: {
+        fg: 'red',
+    }
+});
+
 let usernameField = blessed.textbox(
 {
     parent: usernameForm, 
@@ -480,6 +491,7 @@ function restart()
 
 function getUsername (callback)
 {
+    usernameRegex = /^[A-Za-z0-9]{3,10}$/;
     mainScreen.append(background);
     mainScreen.append(usernameForm);
     pathField.setValue(defaultPath);
@@ -491,6 +503,21 @@ function getUsername (callback)
     
     usernameField.on('press', function(ch, key) {
         usernameField.focus();
+    });
+    
+    usernameField.on('keypress', function(ch, key)
+    {   
+        if(usernameRegex.test(usernameField.getValue()))
+        {
+            errText.hide();
+            usernameField.style.bg = '';
+        }
+        else
+        {
+            errText.show();
+            usernameField.style.bg = 'red';
+        }
+        
     });
     
     usernameField.key(['enter'], function(ch, key)  {
@@ -510,12 +537,23 @@ function getUsername (callback)
     });
     
     submitButton.on('press', function() {
-        username = usernameField.getValue();
-        actualPath = pathField.getValue();
         
-        mainScreen.remove(usernameForm);
+        if(usernameRegex.test(usernameField.getValue()))
+        {
+            errText.hide();
+            usernameField.style.bg = '';
+            username = usernameField.getValue();
+            actualPath = pathField.getValue();
+        
+            mainScreen.remove(usernameForm);
 
-        callback();
+            callback();
+        }
+        else
+        {
+            errText.show();
+            usernameField.style.bg = 'red';
+        }
     });
     
 }
