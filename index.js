@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const blessed = require('blessed');
 const moment = require('moment');
+const emoji = require('node-emoji');
 
 let username;
 let defaultPath = `ws://localhost:4930`;
@@ -11,22 +12,6 @@ let lastMessage;
 let mainScreen = blessed.screen({
     smartCSR: true
 });
-
-// background gif
-
-let background = blessed.image(
-{
-    file: './rainbow-2.gif',
-    type: 'ansi',
-    animate: true,
-    top: 0,
-    left: 0,
-    height: 'shrink',
-    width: 'shrink',
-    scale: 1.0,
-    optimization: 'mem'
-});
-
 
 /* User login screen */
 let usernameForm = blessed.form(
@@ -176,9 +161,11 @@ let chatbox = blessed.box(
   },
   style: {
     fg: 'white',
-    transparent: true,
     border: {
       fg: '#ffffff'
+    },
+    scrollbar: {
+        bg: 'green'
     }
   }
 });
@@ -194,7 +181,6 @@ let userBox = blessed.box (
     },
     style: {
         fg: 'white',
-        transparent: true,
         border: {
         fg: '#ffffff'
         }
@@ -214,7 +200,6 @@ let userListBox = blessed.box (
     },
    style: {
     fg: 'white',
-    transparent: true,
     border: {
       fg: '#ffffff'
     }
@@ -234,7 +219,6 @@ let commandBox = blessed.box (
     },
    style: {
     fg: 'white',
-    transparent: true,
     border: {
       fg: '#ffffff'
     }
@@ -343,10 +327,10 @@ function createMsg(kindStr, dataStr, toStr = 'all')
 function printMsg(jsonMsg)
 {
     if(jsonMsg.kind === 'direct')
-        chatbox.pushLine(`[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${jsonMsg.data} `);
+        chatbox.pushLine(emoji.emojify(`[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${jsonMsg.data} `));
     else 
     {
-        chatbox.pushLine(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${jsonMsg.data} `);
+        chatbox.pushLine(emoji.emojify(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${jsonMsg.data} `));
     }
     
     chatbox.setScrollPerc(100);
@@ -454,13 +438,8 @@ function makeConnection()
         switch(serverJSON.kind)
         {
             case 'userlist':
-                if(!sysUserlistCall)
-                    printMsg(serverJSON);
-                else
-                {
-                    addUsers(serverJSON);
-                    sysUserlistCall = false; 
-                }
+                addUsers(serverJSON);
+                sysUserlistCall = false; 
                 break;
             case 'connection':
                 printMsg(serverJSON);
@@ -492,7 +471,6 @@ function restart()
 function getUsername (callback)
 {
     usernameRegex = /^[A-Za-z0-9]{3,10}$/;
-    mainScreen.append(background);
     mainScreen.append(usernameForm);
     pathField.setValue(defaultPath);
     usernameField.clearValue();
