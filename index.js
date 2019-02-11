@@ -1,7 +1,6 @@
 const WebSocket = require('ws');
 const blessed = require('blessed');
 const moment = require('moment');
-const emoji = require('node-emoji');
 
 let username;
 let defaultPath = `ws://localhost:4930`;
@@ -327,10 +326,10 @@ function createMsg(kindStr, dataStr, toStr = 'all')
 function printMsg(jsonMsg)
 {
     if(jsonMsg.kind === 'direct')
-        chatbox.pushLine(emoji.emojify(`[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${jsonMsg.data} `));
+        chatbox.pushLine(`[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${jsonMsg.data} `);
     else 
     {
-        chatbox.pushLine(emoji.emojify(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${jsonMsg.data} `));
+        chatbox.pushLine(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${jsonMsg.data} `);
     }
     
     chatbox.setScrollPerc(100);
