@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const blessed = require('blessed');
 const moment = require('moment');
+const fs = require('fs');
 const styling = require('./styling.json');
 
 let username;
@@ -222,7 +223,7 @@ let commandBox = blessed.box (
     height: '35%',
     scrollable: true, 
     label:'Commands',
-    content: ' Whisper/DM: \\w USERNAME MESSAGE \n Check username: \\whoami ',
+    content: ' Whisper/DM: \\w USERNAME MESSAGE \n Check username: \\whoami \n Add style: \\addStyle REGEX STYLE \n Delete style: \\rmStyle REGEX',
     border: {
         type: 'line'
     },
@@ -345,7 +346,7 @@ function printMsg(jsonMsg)
     {
         chatbox.pushLine(`{red-fg}SERVER ERROR: ${jsonMsg.data}{/red-fg}`);         
     }
-    else if(jsonMsg.from === 'GABServer')
+    else if(jsonMsg.from === 'GABServer' || jsonMsg.kind === 'server')
     {
         chatbox.pushLine(`{yellow-fg}SERVER MSG: ${jsonMsg.data}{/yellow-fg}`);
     }
@@ -405,6 +406,9 @@ function sendMsg(conn, msg)
     let whisperRegex = /\\w ([a-zA-Z0-9]{0,10}) .+/;
     let userlistRegex = /\\userlist/;
     let whoamiRegex = /\\whoami/;
+    let addStyleRegex = /\\addStyle (.+) (.+)/;
+    let deleteStyleRegex = /\\rmStyle (.+)/;
+    
     if(msg && msg.length !== 0)
     {
         if(whisperRegex.test(msg))
@@ -423,6 +427,60 @@ function sendMsg(conn, msg)
         {
              conn.send(JSON.stringify(createMsg('whoami', '', '')));
              printMsg(createMsg('chat', msg));
+        }
+        else if(addStyleRegex.test(msg.trim()))
+        {
+            let styleArr = msg.trim().split(addStyleRegex);
+            if(styleArr[2] !== 'italic' && styleArr[2] !== 'italics')
+            {
+                let found = -1;
+                
+                for(let i = 0; i < styling.styles.length; i++)
+                {
+                    if(styling.styles[i].expression === styleArr[1])
+                    {
+                        found = i;
+                    }     
+                }
+            
+                if(found === -1)
+                {
+                    styling.styles.push({"expression": styleArr[1], "style": styleArr[2]});
+                    saveStyles();
+                    printMsg(createMsg('server', 'Style successfully saved'));
+                }
+                else
+                {
+                    styling.styles[found] = {"expression": styleArr[1], "style": styleArr[2]};
+                    saveStyles();
+                    printMsg(createMsg('server', 'Existing style successfully overwritten'));
+                }
+            }
+            else
+            {
+                printMsg(createMsg('error', 'No support for italics on this client.'));
+            }
+        }
+        else if(deleteStyleRegex.test(msg))
+        {
+            let styleArr = msg.split(deleteStyleRegex);
+            let found = -1;
+            
+            for(let i = 0; i < styling.styles.length; i++)
+            {
+                if(styling.styles[i].expression === styleArr[1])
+                {
+                    found = i;
+                }     
+            }
+            
+            
+            if(found !== -1)
+            {
+                styling.styles.splice(found, 1);
+                saveStyles();
+                printMsg(createMsg('server', 'Style successfully deleted'));
+            }
         }
         else
         {
@@ -481,13 +539,15 @@ function makeConnection()
         msgInputBox.focus();
         
         enterButton.on('press', function() {
-           sendMsg(connection, msgInputBox.getValue());
+           let input = msgInputBox.getValue();
            msgInputBox.clearValue();
+           sendMsg(connection, input);
         });
         
         msgInputBox.key(['enter'], function(ch, key)  {
-            sendMsg(connection, msgInputBox.getValue());
+            let input = msgInputBox.getValue();
             msgInputBox.clearValue();
+            sendMsg(connection, input);
             msgInputBox.focus();
         });   
     } 
@@ -514,6 +574,18 @@ function makeConnection()
         }
     };
     
+}
+
+function saveStyles()
+{
+    try
+    {
+        fs.writeFileSync('./styling.json', JSON.stringify(styling));
+    }
+    catch(err)
+    {
+        printMsg(createMsg('error', err.message))
+    }
 }
 
 function restart()

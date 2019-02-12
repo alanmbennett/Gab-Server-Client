@@ -1,9 +1,1 @@
-{
-    "styles": [
-        {"expression": "wonderful", "style": "bold"},
-        {"expression": "hello", "style": "yellow"},
-        {"expression": "under", "style": "underline"},
-        {"expression": "blink-182", "style": "blink"},
-        {"expression": "inverse", "style": "inverse"}
-    ]
-}
+{"styles":[{"expression":"wonderful","style":"bold"},{"expression":"hello","style":"yellow"},{"expression":"under","style":"underline"},{"expression":"blink-182","style":"blink"},{"expression":"inverse","style":"inverse"}]}
