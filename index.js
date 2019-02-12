@@ -3,11 +3,13 @@ const blessed = require('blessed');
 const moment = require('moment');
 const fs = require('fs');
 const styling = require('./styling.json');
+const Poll = require('./poll.js');
 
 let username;
 let defaultPath = `ws://localhost:4930`;
 let actualPath = defaultPath; 
 let lastMessage;
+let myPoll = null;
 
 // Screen objects
 let mainScreen = blessed.screen({
@@ -340,7 +342,7 @@ function printMsg(jsonMsg)
     
     if(jsonMsg.kind === 'direct')
     {    
-        chatbox.pushLine(`{blue-fg}[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${styledData} {\blue-fg}`);
+        chatbox.pushLine(`{green-fg}[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${styledData} {/green-fg}`);
     }
     else if(jsonMsg.kind === 'error')
     {
@@ -408,6 +410,10 @@ function sendMsg(conn, msg)
     let whoamiRegex = /\\whoami/;
     let addStyleRegex = /\\addStyle (.+) (.+)/;
     let deleteStyleRegex = /\\rmStyle (.+)/;
+    let makePollRegex = /\\mkPoll (.+)/;
+    let add2PollRegex = /\\add2Poll (.+)/;
+    let openPollRegex = /\\openPoll/;
+    let closePollRegex = /\\closePoll/;
     
     if(msg && msg.length !== 0)
     {
@@ -472,14 +478,73 @@ function sendMsg(conn, msg)
                 {
                     found = i;
                 }     
-            }
-            
+            } 
             
             if(found !== -1)
             {
                 styling.styles.splice(found, 1);
                 saveStyles();
                 printMsg(createMsg('server', 'Style successfully deleted'));
+            }
+        }
+        else if(makePollRegex.test(msg))
+        {
+            let arr = msg.split(makePollRegex);
+            
+            myPoll = new Poll(arr[1]);
+            
+            printMsg(createMsg('server', 'New poll started! Now add some answers and open it to the chatroom.'));
+        }
+        else if(add2PollRegex.test(msg))
+        {
+            if(myPoll === null)
+            {
+                printMsg(createMsg('server', `Adding to poll failed! You haven't created a poll yet!! Create one with \\mkPoll QUESTION`));
+            }
+            else if(!myPoll.getOpen)
+            {
+                let arr = msg.split(add2PollRegex);
+            
+                myPoll.addAnswer(arr[1]);
+            
+                printMsg(createMsg('server', `Answer added to poll ${myPoll.getQuestion}`));
+            }
+            else
+            {
+                printMsg(createMsg('server', `Your poll is open for voting, you cannot add any more answers to it. Please close it first with \\closePoll`)); 
+            }
+        }
+        else if(openPollRegex.test(msg))
+        {
+            if(myPoll === null)
+            {
+                printMsg(createMsg('server', `Opening poll failed! You haven't created a poll yet!! Create one with \\mkPoll QUESTION`));
+            }
+            else if(myPoll.enoughAnswers())
+            {
+                let instr = `To vote on it, type \\pollAns# (where # is the number of your answer) in the chat or whisper it to ${username}`;
+                myPoll.setOpen(true);
+                conn.send(JSON.stringify(createMsg('chat', `${username} has created a poll!:\n${myPoll.toString()}\n${instr}`)));
+            } 
+            else 
+            {
+                printMsg(createMsg('server', `Opening poll failed! You need at least 2 answers to open your poll to the public. Add some with \\add2Poll ANSWER`));
+            }
+        }
+        else if(closePollRegex.test(msg))
+        {
+            if(myPoll === null)
+            {
+                printMsg(createMsg('server', `Closing poll failed! You haven't created a poll yet!! Create one with \\mkPoll QUESTION`));
+            }
+            else if(myPoll.getOpen)
+            {
+                myPoll.setOpen(false);
+                conn.send(JSON.stringify(createMsg('chat', `${username} has closed their poll!\n${myPoll.results()}`)));
+            } 
+            else
+            {
+                printMsg(createMsg('server', `Your poll "${myPoll.getQuestion}" is already closed.`));
             }
         }
         else
@@ -557,6 +622,7 @@ function makeConnection()
         //let serverStr = msg.data;
         let serverJSON = JSON.parse(msg.data);
         lastMessage = serverJSON;
+        let pollAnsRegex = /^\\pollAns([0-9]+)$/;
         
         switch(serverJSON.kind)
         {
@@ -570,7 +636,37 @@ function makeConnection()
                 connection.send(JSON.stringify(createMsg('userlist', "", "")));
                 break;
             default:
-                printMsg(serverJSON);
+                if(pollAnsRegex.test(serverJSON.data) && serverJSON.from != username)
+                {
+                    if(myPoll === null)
+                    {   
+                    }
+                    else if(!myPoll.getOpen)
+                    {
+                        connection.send(JSON.stringify(createMsg('direct', '[AUTOMATED MSG] Poll is not open for voting at this time.', serverJSON.from))); 
+                    }
+                    else if(myPoll.alreadyVoted(serverJSON.from))
+                    {
+                         connection.send(JSON.stringify(createMsg('direct', '[AUTOMATED MSG] You have already voted in this poll.', serverJSON.from)));   
+                    }
+                    else
+                    {
+                        let ans = serverJSON.data.split(pollAnsRegex);
+                        if(myPoll.validAnswer(parseInt(ans[1])))
+                        {
+                           myPoll.addVote(parseInt(ans[1]), serverJSON.from);
+                           connection.send(JSON.stringify(createMsg('direct', `[AUTOMATED MSG] Thanks for your answer, ${serverJSON.from}! The results of the poll will be made public once ${username} closes it so stay tuned.`, serverJSON.from)));   
+                        }
+                        else
+                        {
+                            connection.send(JSON.stringify(createMsg('direct', `[AUTOMATED MSG] Error: Invalid answer.`, serverJSON.from))); 
+                        }   
+                    }
+                }
+                else 
+                {
+                    printMsg(serverJSON);
+                }
         }
     };
     
