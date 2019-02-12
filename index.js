@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const blessed = require('blessed');
 const moment = require('moment');
+const styling = require('./styling.json');
 
 let username;
 let defaultPath = `ws://localhost:4930`;
@@ -116,6 +117,9 @@ let submitButton = blessed.button({
         },
         hover: {
             bg: 'red'
+        },
+        focus: {
+            bg: 'red'
         }
     }
 });
@@ -140,6 +144,9 @@ let cancelButton = blessed.button({
         },
         hover: {
             bg: 'red'
+        },
+        focus: {
+            bg: 'red'
         }
     }
 });
@@ -153,6 +160,7 @@ let chatbox = blessed.box(
   height: '90%',
   alwaysScroll:true,
   scrollable: true,
+  label: 'Chatroom',
   mouse: true,
   tags: true,
   border: {
@@ -173,6 +181,7 @@ let userBox = blessed.box (
 {
     top: 'right',
     right: 0,
+    label: 'User Info',
     width: '30%',
     height: '15%',
     border: {
@@ -193,7 +202,7 @@ let userListBox = blessed.box (
     width: '30%',
     height: '40%',
     scrollable: true, 
-    content: 'Users in the Chat: ',
+    label: 'Other Users in the Chat',
     border: {
         type: 'line'
     },
@@ -212,7 +221,8 @@ let commandBox = blessed.box (
     width: '30%',
     height: '35%',
     scrollable: true, 
-    content: 'Commands:\n Whisper/DM: \\w USERNAME MESSAGE \n Get user list: \\userlist \n Check username: \\whoami ',
+    label:'Commands',
+    content: ' Whisper/DM: \\w USERNAME MESSAGE \n Check username: \\whoami ',
     border: {
         type: 'line'
     },
@@ -325,15 +335,69 @@ function createMsg(kindStr, dataStr, toStr = 'all')
 
 function printMsg(jsonMsg)
 {
+    let styledData = applyStyles(jsonMsg.data);
+    
     if(jsonMsg.kind === 'direct')
-        chatbox.pushLine(`[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${jsonMsg.data} `);
+    {    
+        chatbox.pushLine(`{blue-fg}[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${styledData} {\blue-fg}`);
+    }
+    else if(jsonMsg.kind === 'error')
+    {
+        chatbox.pushLine(`{red-fg}SERVER ERROR: ${jsonMsg.data}{/red-fg}`);         
+    }
+    else if(jsonMsg.from === 'GABServer')
+    {
+        chatbox.pushLine(`{yellow-fg}SERVER MSG: ${jsonMsg.data}{/yellow-fg}`);
+    }
     else 
     {
-        chatbox.pushLine(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${jsonMsg.data} `);
+        chatbox.pushLine(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${styledData} `);
     }
     
     chatbox.setScrollPerc(100);
     mainScreen.render();
+}
+
+function applyStyles(str)
+{ 
+    styling.styles.forEach((elem) => {
+        let allMatches = str.match(elem.expression);
+        if(allMatches !== null)
+        {
+            switch(elem.style)
+            {
+                case 'bold':
+                    allMatches.forEach((match) => {
+                        str = str.replace(new RegExp(match,'g'), `{bold}${match}{/bold}`);
+                    });
+                    break;
+                case 'underline':
+                    allMatches.forEach((match) => {
+                        str = str.replace(new RegExp(match,'g'), `{underline}${match}{/underline}`);
+                    });
+                    break;
+                case 'italic':
+                case 'italics':
+                    break;
+                case 'blink':
+                    allMatches.forEach((match) => {
+                        str = str.replace(new RegExp(match,'g'), `{blink}${match}{/blink}`);
+                    });
+                    break;
+                case 'inverse':
+                    allMatches.forEach((match) => {
+                        str = str.replace(new RegExp(match,'g'), `{inverse}${match}{/inverse}`);
+                    });
+                    break;
+                default: // assumes it is a color
+                    allMatches.forEach((match) => {
+                        str = str.replace(new RegExp(match,'g'), `{${elem.style}-fg}${match}{/}`);
+                    });
+            }  
+        }
+    });
+    
+    return str;
 }
 
 function sendMsg(conn, msg)
@@ -371,9 +435,9 @@ function addUsers(obj)
 {
     let users = obj.data.split(',');
     userListBox.setContent(''); 
-    userListBox.pushLine('Users in the Chat: ');
     users.forEach((elem) => {
-        userListBox.pushLine(elem + ' ');
+        if(elem !== username)
+            userListBox.pushLine(elem);
     });
     mainScreen.render();
 }
@@ -523,6 +587,7 @@ function getUsername (callback)
             actualPath = pathField.getValue();
         
             mainScreen.remove(usernameForm);
+            
 
             callback();
         }
