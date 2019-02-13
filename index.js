@@ -10,6 +10,8 @@ let defaultPath = `ws://localhost:4930`;
 let actualPath = defaultPath; 
 let lastMessage;
 let myPoll = null;
+let instr = `To vote on it, type \\pollAns# (where # is the number of your answer) in the chat or whisper it to ${username}.\n`;
+let reprintPollRegex = /\\reprintPoll/;
 
 // Screen objects
 let mainScreen = blessed.screen({
@@ -225,7 +227,7 @@ let commandBox = blessed.box (
     height: '35%',
     scrollable: true, 
     label:'Commands',
-    content: ' Whisper/DM: \\w USERNAME MESSAGE \n Check username: \\whoami \n Add style: \\addStyle REGEX STYLE \n Delete style: \\rmStyle REGEX',
+    content: ' Whisper/DM: \\w USERNAME MESSAGE \n Check username: \\whoami \n Add style: \\addStyle REGEX STYLE \n Delete style: \\rmStyle REGEX\n Make a poll: \\mkPoll QUESTION\n Add Answer to Poll: \\add2Poll ANSWER\n Open poll: \\openPoll\n Close poll: \\closePoll',
     border: {
         type: 'line'
     },
@@ -507,7 +509,7 @@ function sendMsg(conn, msg)
             
                 myPoll.addAnswer(arr[1]);
             
-                printMsg(createMsg('server', `Answer added to poll ${myPoll.getQuestion}`));
+                printMsg(createMsg('server', `Answer added to poll "${myPoll.getQuestion}"`));
             }
             else
             {
@@ -522,9 +524,8 @@ function sendMsg(conn, msg)
             }
             else if(myPoll.enoughAnswers())
             {
-                let instr = `To vote on it, type \\pollAns# (where # is the number of your answer) in the chat or whisper it to ${username}`;
                 myPoll.setOpen(true);
-                conn.send(JSON.stringify(createMsg('chat', `${username} has created a poll!:\n${myPoll.toString()}\n${instr}`)));
+                conn.send(JSON.stringify(createMsg('chat', `[AUTOMATED MSG] ${username} has created a poll!:\n\n${myPoll.toString()}\n${instr}\n`)));
             } 
             else 
             {
@@ -540,7 +541,7 @@ function sendMsg(conn, msg)
             else if(myPoll.getOpen)
             {
                 myPoll.setOpen(false);
-                conn.send(JSON.stringify(createMsg('chat', `${username} has closed their poll!\n${myPoll.results()}`)));
+                conn.send(JSON.stringify(createMsg('chat', `[AUTOMATED MSG] ${username} has closed their poll!\n\n${myPoll.results()}`)));
             } 
             else
             {
@@ -578,6 +579,8 @@ function makeConnection()
     const connection = new WebSocket(`${actualPath}/?username=${username}`);
     let sysUserlistCall = false;
     userBox.setContent(`Logged in as ${username} `);
+    let errorMsg;
+    let errEvent = false;
     
     mainScreen.append(chatbox);
     mainScreen.append(msgInputBox);
@@ -591,13 +594,22 @@ function makeConnection()
     
     connection.onclose = () => 
     {
-        let errorMsg = `${lastMessage.data}\n\n\nPress click anywhere to end program.`;
+        if(lastMessage !== undefined && lastMessage.kind === 'error' && !errEvent)
+            errorMsg = `${lastMessage.data}\n\n\nClick anywhere or press any key to end program.`;
+        else if(!errEvent)
+            errorMsg = `Server has terminated connection for unspecified reason.\n\n\nClick anywhere or press any key to end program.`;
         enterButton.hide();
         msgInputBox.hide();
         mainScreen.append(terminatedMessage);
         
         terminatedMessage.error(errorMsg, 0, restart);
     };
+    
+    connection.onerror = () =>
+    {
+        errEvent = true;
+        errorMsg = 'Invalid connection.\n\n\nClick anywhere or press any key to end program.';
+    }
     
     connection.onopen = () =>
     {    
@@ -655,7 +667,8 @@ function makeConnection()
                         if(myPoll.validAnswer(parseInt(ans[1])))
                         {
                            myPoll.addVote(parseInt(ans[1]), serverJSON.from);
-                           connection.send(JSON.stringify(createMsg('direct', `[AUTOMATED MSG] Thanks for your answer, ${serverJSON.from}! The results of the poll will be made public once ${username} closes it so stay tuned.`, serverJSON.from)));   
+                           connection.send(JSON.stringify(createMsg('direct', `[AUTOMATED MSG] Thanks for your answer, ${serverJSON.from}! The results of the poll will be made public once ${username} closes it so stay tuned.`, serverJSON.from))); 
+                           printMsg(serverJSON);
                         }
                         else
                         {

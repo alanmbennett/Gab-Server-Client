@@ -73,7 +73,7 @@ module.exports = class Poll
         {
             if(this.voters.length != 0)
             {
-                str += `${answer.votes/this.voters.length*100}% voted for ${count} - ${answer.text}\n`;
+                str += `${answer.votes/this.voters.length*100}% (${answer.votes}) voted for ${count} - ${answer.text}\n`;
             }
             else
             {
@@ -83,12 +83,14 @@ module.exports = class Poll
             count++;
         });
         
+        str += `\nTotal # of voters: ${this.voters.length}\n`;
+            
         return str;
     }
     
     toString()
     {
-        let str = `"${this.question}"\n\n`;
+        let str = `${this.question}\n\n`;
         let count = 1;
         
         this.answers.forEach((answer) => 
