@@ -10,7 +10,6 @@ let defaultPath = `ws://localhost:4930`;
 let actualPath = defaultPath; 
 let lastMessage;
 let myPoll = null;
-let instr = `To vote on it, type \\pollAns# (where # is the number of your answer) in the chat or whisper it to ${username}.\n`;
 let reprintPollRegex = /\\reprintPoll/;
 
 // Screen objects
@@ -524,6 +523,7 @@ function sendMsg(conn, msg)
             }
             else if(myPoll.enoughAnswers())
             {
+                let instr = `To vote on it, type \\pollAns# (where # is the number of your answer) in the chat or whisper it to ${username}.\n`;
                 myPoll.setOpen(true);
                 conn.send(JSON.stringify(createMsg('chat', `[AUTOMATED MSG] ${username} has created a poll!:\n\n${myPoll.toString()}\n${instr}\n`)));
             } 
