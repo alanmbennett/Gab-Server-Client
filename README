@@ -1,0 +1,85 @@
+PROJECT 1 - GAB CHAT CLIENT README
+AUTHOR: Alan Bennett
+DATE: 2/14/2019
+
+
+-- RUNNING PROJECT IN COMMAND-LINE WITH NODE.JS --
+
+To start up the chat client, type in "node ." or "node index.js" when inside its directory to start it up.
+
+For the best experience, resize terminal window to at least a width/columns of 130 and a height/rows of 42. Resizing the window during execution is fine. 
+
+
+-- QUITTING PROGRAM --
+
+User may exit program at any time by doing one of the following:
+
+1. Pressing "Cancel" on Login screen
+2. Pressing "Logout" on Chatroom screen
+3. When not focussed on a UI element, pressing Control+C
+4. When not focussed on a UI element, pressing Esc
+5. When not focussed on a UI element, pressing Q
+
+
+-- ERRORS --
+
+Upon connection error or termination of any kind, the program will display an error message and terminate as soon as the user either presses a key or clicks anywhere on the screen. 
+
+
+-- LOGIN SCREEN --
+
+The client will load up a UI made with Blessedjs. User will be met with a screen to specify username and connection. By pressing Enter, the program will change focus from "Username" field to "Connection" field to the "Connect" button.
+
+Alternatively, the user may use their mouse to click on the fields and buttons.
+
+Alphanumeric usernames from 3 to 10 characters only, otherwise program will not proceed with connecting until valid one is typed and will display error message and highlight "Username" field in red.
+
+
+-- CHATROOM SCREEN --
+
+Once logged in and the user has successfully established a connection with a GAB-Server, user can start sending messages. To send messages type in the input box and either press Enter on the keyboard or click on the "Send" button with your mouse.
+
+Using your mouse, you can even scroll the chatroom history.
+
+
+-- COMMANDS --
+
+Client has support for the following commands: 
+
+- Whisping/Direct-messaging (DM): "\w USERNAME MESSAGE" where "USERNAME" represents the desired recipient and 
+    "MESSAGE" represents message you desire to send to that recipient. Example: "\w oropallo hi there"
+    
+- Checking your username: "\whoami"
+
+- Add style  "\addStyle REGEX STYLE" where "REGEX" represents a regular expression to apply the style to and "STYLE" represents the style in question. See supported styles section below for more info on this command. Example "\addStyle wonderful blue"
+
+- Delete style "\rmStyle REGEX" (searches by regular expression and deletes the style from styling.json)
+
+- Create a poll: "\mkPoll QUESTION" where "QUESTION" represents the question of the poll
+
+- Add answer to poll: "\add2Poll ANSWER" where "ANSWER" represents an answer/option for the poll
+
+- Open poll publicly to the chatroom: "\openPoll" 
+
+- Close poll and print out results publicly: "\closePoll"
+
+
+-- STYLING OPTIONS --
+
+Client has support for the following styles:
+
+- bold
+- blink
+- inverse
+- underline
+- certain color names (e.g. "blue")
+- color hex codes (e.g. "#FFFFFF")
+
+Due to limitations with Blessedjs, italicization is not supported. Any option other than the first four will automatically assumed to be a color style.
+
+
+-- ADDITIONAL NOTES --
+
+Accessing userlist by command is not supported since the userlist is automatically fetched by the client and displayed on the righthand and updates in real-time. 
+
+The "Additional Feature" is the polling feature, no other chat client needs support coded in. Instructions on how to participate in poll is printed out to the chat. 

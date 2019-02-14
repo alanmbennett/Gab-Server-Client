@@ -1,3 +1,5 @@
+/* Imports\Dependencies */
+
 const WebSocket = require('ws');
 const blessed = require('blessed');
 const moment = require('moment');
@@ -5,6 +7,7 @@ const fs = require('fs');
 const styling = require('./styling.json');
 const Poll = require('./poll.js');
 
+/* Global variables */
 let username;
 let defaultPath = `ws://localhost:4930`;
 let actualPath = defaultPath; 
@@ -12,12 +15,15 @@ let lastMessage;
 let myPoll = null;
 let reprintPollRegex = /\\reprintPoll/;
 
+/* UI ELEMENTS - START */
+/** LOGIN SCREEN - START **/
+
 // Screen objects
 let mainScreen = blessed.screen({
     smartCSR: true
 });
 
-/* User login screen */
+// User login screen
 let usernameForm = blessed.form(
 {
     top: 'center',
@@ -33,6 +39,7 @@ let usernameForm = blessed.form(
     }
 });
 
+// Username field label
 let usernameText = blessed.Text(
 {
     parent: usernameForm,
@@ -41,6 +48,7 @@ let usernameText = blessed.Text(
     content: 'Username'   
 });
 
+// Connection field label
 let connectionText = blessed.Text({
     parent: usernameForm,
     top: '35%',
@@ -48,6 +56,7 @@ let connectionText = blessed.Text({
     content: 'Connection'
 });
 
+// Login error message text
 let errText = blessed.Text({
     parent: usernameForm,
     hidden: true,
@@ -59,6 +68,7 @@ let errText = blessed.Text({
     }
 });
 
+// Username field
 let usernameField = blessed.textbox(
 {
     parent: usernameForm, 
@@ -80,6 +90,7 @@ let usernameField = blessed.textbox(
     }
 });
 
+// Connection path field
 let pathField = blessed.textbox(
 {
     parent: usernameForm, 
@@ -101,6 +112,7 @@ let pathField = blessed.textbox(
     }
 });
 
+// Connect button
 let submitButton = blessed.button({
     parent: usernameForm,
     top: '50%',
@@ -128,6 +140,7 @@ let submitButton = blessed.button({
     }
 });
 
+// Cancel button
 let cancelButton = blessed.button({
     parent: usernameForm,
     top: '50%',
@@ -155,8 +168,10 @@ let cancelButton = blessed.button({
     }
 });
 
-/* Chat screen */
+/** LOGIN SCREEN - END **/
+/** CHAT SCREEN - START **/
 
+// Box for chat history
 let chatbox = blessed.box(
 {
   top: 'left',
@@ -181,6 +196,7 @@ let chatbox = blessed.box(
   }
 });
 
+// Box for user information
 let userBox = blessed.box (
 {
     top: 'right',
@@ -199,6 +215,7 @@ let userBox = blessed.box (
   }
 });
 
+// Box for list of users in chatroom
 let userListBox = blessed.box (
 {
     top: '15%',
@@ -218,6 +235,7 @@ let userListBox = blessed.box (
   }
 });
 
+// Helpful guide for chat client commands
 let commandBox = blessed.box (
 {
     top: '54%',
@@ -238,6 +256,7 @@ let commandBox = blessed.box (
   }
 });
 
+// Error message upon termination 
 let terminatedMessage = blessed.message (
 {
     top: 'center',
@@ -257,6 +276,7 @@ let terminatedMessage = blessed.message (
     }
 });
 
+// Field for inputting chatroom messages
 let msgInputBox = blessed.textbox(
 {
     bottom: 0,
@@ -276,6 +296,7 @@ let msgInputBox = blessed.textbox(
     }
 });
 
+// Send message button
 let enterButton = blessed.button(
 {
     bottom: 0,
@@ -300,6 +321,7 @@ let enterButton = blessed.button(
     }
 });
 
+// Logout/exit button
 let logoutButton = blessed.button(
 {
     bottom: 0,
@@ -324,6 +346,12 @@ let logoutButton = blessed.button(
     }
 });
 
+/** CHAT SCREEN - END **/
+/* UI ELEMENTS - END */
+
+/* Main app's functions */
+
+// Make a message JSON
 function createMsg(kindStr, dataStr, toStr = 'all')
 {
     let obj = 
@@ -337,31 +365,33 @@ function createMsg(kindStr, dataStr, toStr = 'all')
     return obj;
 }
 
+// Print message to chatroom history
 function printMsg(jsonMsg)
 {
-    let styledData = applyStyles(jsonMsg.data);
+    let styledData = applyStyles(jsonMsg.data); // apply any existing styles to message
     
-    if(jsonMsg.kind === 'direct')
+    if(jsonMsg.kind === 'direct') // message is whisper/DM
     {    
         chatbox.pushLine(`{green-fg}[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${styledData} {/green-fg}`);
     }
-    else if(jsonMsg.kind === 'error')
+    else if(jsonMsg.kind === 'error') // message is error message
     {
         chatbox.pushLine(`{red-fg}SERVER ERROR: ${jsonMsg.data}{/red-fg}`);         
     }
-    else if(jsonMsg.from === 'GABServer' || jsonMsg.kind === 'server')
+    else if(jsonMsg.from === 'GABServer' || jsonMsg.kind === 'server') // message is from the server 
     {
         chatbox.pushLine(`{yellow-fg}SERVER MSG: ${jsonMsg.data}{/yellow-fg}`);
     }
-    else 
+    else // Otherwise, just print out as a normal message
     {
         chatbox.pushLine(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${styledData} `);
     }
     
-    chatbox.setScrollPerc(100);
-    mainScreen.render();
+    chatbox.setScrollPerc(100); //Scroll to bottom of history
+    mainScreen.render(); // Rerender screen
 }
 
+// Apply any existing styles to string given
 function applyStyles(str)
 { 
     styling.styles.forEach((elem) => {
@@ -370,7 +400,7 @@ function applyStyles(str)
         {
             switch(elem.style)
             {
-                case 'bold':
+                case 'bold': 
                     allMatches.forEach((match) => {
                         str = str.replace(new RegExp(match,'g'), `{bold}${match}{/bold}`);
                     });
@@ -404,8 +434,10 @@ function applyStyles(str)
     return str;
 }
 
+// Send a message to the server or to the client
 function sendMsg(conn, msg)
 {
+    /* Regex */
     let whisperRegex = /\\w ([a-zA-Z0-9]{0,10}) .+/;
     let userlistRegex = /\\userlist/;
     let whoamiRegex = /\\whoami/;
@@ -416,32 +448,34 @@ function sendMsg(conn, msg)
     let openPollRegex = /\\openPoll/;
     let closePollRegex = /\\closePoll/;
     
-    if(msg && msg.length !== 0)
+    if(msg && msg.length !== 0) // as long as message is not null and not an empty string
     {
-        if(whisperRegex.test(msg))
+        if(whisperRegex.test(msg)) // outgoing message is whisper
         {
             let data = msg.replace(/(\\w [a-zA-Z0-9]{0,10}) /, '');
             let to = msg.split(/\\w ([a-zA-Z0-9]{0,10}) .+/);
+            
             conn.send(JSON.stringify(createMsg('direct', data, to[1])));
             printMsg(createMsg('direct', data, to[1]));
         }
-        else if(userlistRegex.test(msg))
+        else if(userlistRegex.test(msg)) // outgoing message is userlist request
         {
              conn.send(JSON.stringify(createMsg('userlist', '', '')));
              printMsg(createMsg('chat', msg));
         }
-        else if(whoamiRegex.test(msg))
+        else if(whoamiRegex.test(msg)) // outgoing message is whoami request
         {
              conn.send(JSON.stringify(createMsg('whoami', '', '')));
              printMsg(createMsg('chat', msg));
         }
-        else if(addStyleRegex.test(msg.trim()))
+        else if(addStyleRegex.test(msg.trim())) // message is a stylization command
         {
             let styleArr = msg.trim().split(addStyleRegex);
-            if(styleArr[2] !== 'italic' && styleArr[2] !== 'italics')
+            if(styleArr[2] !== 'italic' && styleArr[2] !== 'italics') 
             {
                 let found = -1;
                 
+                /* See if style already exists */
                 for(let i = 0; i < styling.styles.length; i++)
                 {
                     if(styling.styles[i].expression === styleArr[1])
@@ -450,29 +484,33 @@ function sendMsg(conn, msg)
                     }     
                 }
             
+                /* If not found, save the new style*/
                 if(found === -1)
                 {
                     styling.styles.push({"expression": styleArr[1], "style": styleArr[2]});
                     saveStyles();
                     printMsg(createMsg('server', 'Style successfully saved'));
                 }
-                else
+                /* If found, overwrite the style */
+                else 
                 {
                     styling.styles[found] = {"expression": styleArr[1], "style": styleArr[2]};
                     saveStyles();
                     printMsg(createMsg('server', 'Existing style successfully overwritten'));
                 }
             }
+            /* Style is italics, client does not support italics due to Blessedjs limitations */
             else
             {
                 printMsg(createMsg('error', 'No support for italics on this client.'));
             }
         }
-        else if(deleteStyleRegex.test(msg))
+        else if(deleteStyleRegex.test(msg)) // message wants to delete a style
         {
             let styleArr = msg.split(deleteStyleRegex);
             let found = -1;
             
+            /* Search for style to delete */
             for(let i = 0; i < styling.styles.length; i++)
             {
                 if(styling.styles[i].expression === styleArr[1])
@@ -481,14 +519,14 @@ function sendMsg(conn, msg)
                 }     
             } 
             
-            if(found !== -1)
+            if(found !== -1) // if style is found
             {
                 styling.styles.splice(found, 1);
                 saveStyles();
                 printMsg(createMsg('server', 'Style successfully deleted'));
             }
         }
-        else if(makePollRegex.test(msg))
+        else if(makePollRegex.test(msg)) // create a poll
         {
             let arr = msg.split(makePollRegex);
             
@@ -496,7 +534,7 @@ function sendMsg(conn, msg)
             
             printMsg(createMsg('server', 'New poll started! Now add some answers and open it to the chatroom.'));
         }
-        else if(add2PollRegex.test(msg))
+        else if(add2PollRegex.test(msg)) // add answer to poll
         {
             if(myPoll === null)
             {
@@ -515,7 +553,7 @@ function sendMsg(conn, msg)
                 printMsg(createMsg('server', `Your poll is open for voting, you cannot add any more answers to it. Please close it first with \\closePoll`)); 
             }
         }
-        else if(openPollRegex.test(msg))
+        else if(openPollRegex.test(msg)) // open poll to the chatroom and send poll string to server
         {
             if(myPoll === null)
             {
@@ -532,7 +570,7 @@ function sendMsg(conn, msg)
                 printMsg(createMsg('server', `Opening poll failed! You need at least 2 answers to open your poll to the public. Add some with \\add2Poll ANSWER`));
             }
         }
-        else if(closePollRegex.test(msg))
+        else if(closePollRegex.test(msg)) // close poll to chatroom and send results to it
         {
             if(myPoll === null)
             {
@@ -548,15 +586,14 @@ function sendMsg(conn, msg)
                 printMsg(createMsg('server', `Your poll "${myPoll.getQuestion}" is already closed.`));
             }
         }
-        else
+        else // Else, send as normal chat message
         {
             conn.send(JSON.stringify(createMsg('chat', msg)));
         }
     }
 }
 
-
-function addUsers(obj)
+function addUsers(obj) // Add users to userlist box
 {
     let users = obj.data.split(',');
     userListBox.setContent(''); 
@@ -567,7 +604,7 @@ function addUsers(obj)
     mainScreen.render();
 }
 
-function makeConnection()
+function makeConnection() // Connect to server and listen for events
 {
     const connection = new WebSocket(`${actualPath}/?username=${username}`);
     let sysUserlistCall = false;
@@ -575,6 +612,7 @@ function makeConnection()
     let errorMsg;
     let errEvent = false;
     
+    /* Add chatroom elements to screen */
     mainScreen.append(chatbox);
     mainScreen.append(msgInputBox);
     mainScreen.append(enterButton);
@@ -585,6 +623,7 @@ function makeConnection()
     mainScreen.title = `Chatroom connection: ${actualPath}`;
     mainScreen.render();
     
+    /* Listeners */
     connection.onclose = () => 
     {
         if(lastMessage !== undefined && lastMessage.kind === 'error' && !errEvent)
@@ -624,7 +663,6 @@ function makeConnection()
     
     connection.onmessage = msg => 
     { 
-        //let serverStr = msg.data;
         let serverJSON = JSON.parse(msg.data);
         lastMessage = serverJSON;
         let pollAnsRegex = /^\\pollAns([0-9]+)$/;
@@ -690,19 +728,9 @@ function saveStyles()
     }
 }
 
-function restart()
+function endApp()
 {
     return process.exit(0);
-    /*
-    mainScreen.remove(terminatedMessage);
-    mainScreen.remove(chatbox);
-    mainScreen.remove(msgInputBox);
-    mainScreen.remove(enterButton);
-    mainScreen.remove(userBox);
-    mainScreen.remove(userListBox);
-    mainScreen.remove(logoutButton);
-    
-    getUsername(makeConnection);*/
 }
 
 function getUsername (callback)
@@ -716,11 +744,11 @@ function getUsername (callback)
     
     usernameField.focus();
     
-    usernameField.on('press', function(ch, key) {
+    usernameField.on('press', function(ch, key) { // mouse press on username field
         usernameField.focus();
     });
     
-    usernameField.on('keypress', function(ch, key)
+    usernameField.on('keypress', function(ch, key) // evaluate username as user types
     {   
         if(usernameRegex.test(usernameField.getValue()))
         {
@@ -735,23 +763,23 @@ function getUsername (callback)
         
     });
     
-    usernameField.key(['enter'], function(ch, key)  {
+    usernameField.key(['enter'], function(ch, key)  { // enter key press on username field
             pathField.focus();
     }); 
     
-    pathField.on('press', function(ch, key) {
-        pathField.focus();
+    pathField.on('press', function(ch, key) { // mouse press on connection path field
+            pathField.focus();
     });
     
-    pathField.key(['enter'], function(ch, key)  {
+    pathField.key(['enter'], function(ch, key)  { // enter key press on connection path field
             submitButton.focus();
     }); 
     
-    cancelButton.on('press', function() {
-        return process.exit(0);
+    cancelButton.on('press', function() { // mouse press on cancel button
+            endApp();
     });
     
-    submitButton.on('press', function() {
+    submitButton.on('press', function() { // mouse press on submit button
         
         if(usernameRegex.test(usernameField.getValue()))
         {
@@ -777,12 +805,14 @@ function getUsername (callback)
 // Quit on Escape, q, or Control-C.
 mainScreen.key(['escape', 'q', 'C-c'], function(ch, key) 
 {
-  return process.exit(0);
+    endApp();
 });
 
 logoutButton.on('press', function() {
-    return process.exit(0);
+    endApp();
 });
 
+
+// start program
 getUsername(makeConnection);
 
