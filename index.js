@@ -566,14 +566,6 @@ function addUsers(obj)
     mainScreen.render();
 }
 
-
-function printJSON(obj)
-{
-    chatbox.pushLine(obj);
-    mainScreen.render();
-}
-
-
 function makeConnection()
 {
     const connection = new WebSocket(`${actualPath}/?username=${username}`);
