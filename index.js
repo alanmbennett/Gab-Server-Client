@@ -1,3 +1,8 @@
+/* Author: Alan Bennett
+ * Date: 2/14/2019
+ * Project 1: GAB Chat Client
+*/
+
 /* Imports\Dependencies */
 
 const WebSocket = require('ws');
