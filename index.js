@@ -1,9 +1,12 @@
+/* From NPM */
 const WebSocket = require('ws');
-const blessed = require('blessed');
 const moment = require('moment');
 const fs = require('fs');
 const styling = require('./styling.json');
+
+/* My modules */
 const Poll = require('./poll.js');
+const UI = require('./ui.js');
 
 let username;
 let defaultPath = `ws://localhost:4930`;
@@ -11,318 +14,6 @@ let actualPath = defaultPath;
 let lastMessage;
 let myPoll = null;
 let reprintPollRegex = /\\reprintPoll/;
-
-// Screen objects
-let mainScreen = blessed.screen({
-    smartCSR: true
-});
-
-/* User login screen */
-let usernameForm = blessed.form(
-{
-    top: 'center',
-    left: 'center',
-    width: '50%',
-    height: '50%', 
-    content: 'Input a username and connection: ',
-    style: {
-        fg: 'white',
-        border: {
-            fg: '#ffffff',
-        }
-    }
-});
-
-let usernameText = blessed.Text(
-{
-    parent: usernameForm,
-    top: '15%',
-    left: 0,
-    content: 'Username'   
-});
-
-let connectionText = blessed.Text({
-    parent: usernameForm,
-    top: '35%',
-    left: 0,
-    content: 'Connection'
-});
-
-let errText = blessed.Text({
-    parent: usernameForm,
-    hidden: true,
-    top: '75%',
-    left: 0,
-    content: 'Error: Username must be alphanumeric ranging from 3 to 10 characters. ',
-    style: {
-        fg: 'red',
-    }
-});
-
-let usernameField = blessed.textbox(
-{
-    parent: usernameForm, 
-    top: '10%',
-    left: '20%',
-    width: '60%',
-    height: '15%', 
-    border: {
-        type: 'line'
-    },
-    inputOnFocus: true,
-    keys: true,
-    mouse: true,
-    style: {
-        fg: 'white',
-        border: {
-            fg: '#ffffff'
-        }
-    }
-});
-
-let pathField = blessed.textbox(
-{
-    parent: usernameForm, 
-    top: '30%',
-    left: '25%',
-    width: '60%',
-    height: '15%', 
-    border: {
-        type: 'line'
-    },
-    inputOnFocus: true,
-    keys: true,
-    mouse: true,
-    style: {
-        fg: 'white',
-        border: {
-            fg: '#ffffff'
-        }
-    }
-});
-
-let submitButton = blessed.button({
-    parent: usernameForm,
-    top: '50%',
-    left: '40%',
-    width: '30%',
-    height: '15%',
-    border: {
-        type: 'line'
-    },
-    content: 'Connect',
-    align: 'center',
-    mouse: true,
-    style: {
-        fg: 'white',
-        bg: 'green',
-        border: {
-            fg: '#ffffff',
-        },
-        hover: {
-            bg: 'red'
-        },
-        focus: {
-            bg: 'red'
-        }
-    }
-});
-
-let cancelButton = blessed.button({
-    parent: usernameForm,
-    top: '50%',
-    left: 0,
-    width: '30%',
-    height: '15%',
-    border: {
-        type: 'line'
-    },
-    content: 'Cancel',
-    align: 'center',
-    mouse: true,
-    style: {
-        fg: 'white',
-        bg: 'green',
-        border: {
-            fg: '#ffffff',
-        },
-        hover: {
-            bg: 'red'
-        },
-        focus: {
-            bg: 'red'
-        }
-    }
-});
-
-/* Chat screen */
-
-let chatbox = blessed.box(
-{
-  top: 'left',
-  width: '70%',
-  height: '90%',
-  alwaysScroll:true,
-  scrollable: true,
-  label: 'Chatroom',
-  mouse: true,
-  tags: true,
-  border: {
-    type: 'line'
-  },
-  style: {
-    fg: 'white',
-    border: {
-      fg: '#ffffff'
-    },
-    scrollbar: {
-        bg: 'green'
-    }
-  }
-});
-
-let userBox = blessed.box (
-{
-    top: 'right',
-    right: 0,
-    label: 'User Info',
-    width: '30%',
-    height: '15%',
-    border: {
-        type: 'line'
-    },
-    style: {
-        fg: 'white',
-        border: {
-        fg: '#ffffff'
-        }
-  }
-});
-
-let userListBox = blessed.box (
-{
-    top: '15%',
-    right: 0,
-    width: '30%',
-    height: '40%',
-    scrollable: true, 
-    label: 'Other Users in the Chat',
-    border: {
-        type: 'line'
-    },
-   style: {
-    fg: 'white',
-    border: {
-      fg: '#ffffff'
-    }
-  }
-});
-
-let commandBox = blessed.box (
-{
-    top: '54%',
-    right: 0,
-    width: '30%',
-    height: '35%',
-    scrollable: true, 
-    label:'Commands',
-    content: ' Whisper/DM: \\w USERNAME MESSAGE \n Check username: \\whoami \n Add style: \\addStyle REGEX STYLE \n Delete style: \\rmStyle REGEX\n Make a poll: \\mkPoll QUESTION\n Add Answer to Poll: \\add2Poll ANSWER\n Open poll: \\openPoll\n Close poll: \\closePoll',
-    border: {
-        type: 'line'
-    },
-   style: {
-    fg: 'white',
-    border: {
-      fg: '#ffffff'
-    }
-  }
-});
-
-let terminatedMessage = blessed.message (
-{
-    top: 'center',
-    left: 'center',
-    width: '50%',
-    height: '50%', 
-    border: {
-        type: 'line'
-    },
-    keys: true,
-    mouse: true,
-    style: {
-        fg: 'white',
-        border: {
-            fg: '#ffffff'
-        }
-    }
-});
-
-let msgInputBox = blessed.textbox(
-{
-    bottom: 0,
-    width: '60%',
-    height: '10%', 
-    border: {
-        type: 'line'
-    },
-    keys: true,
-    mouse: true,
-    inputOnFocus: true,
-    style: {
-        fg: 'white',
-        border: {
-            fg: '#ffffff'
-        }
-    }
-});
-
-let enterButton = blessed.button(
-{
-    bottom: 0,
-    left: '60%',
-    width: '10%',
-    height: '10%',
-    border: {
-        type: 'line'
-    },
-    content: 'Send',
-    align: 'center',
-    mouse: true,
-    style: {
-        fg: 'white',
-        bg: 'green',
-        border: {
-            fg: '#ffffff',
-        },
-        hover: {
-            bg: 'red'
-        }
-    }
-});
-
-let logoutButton = blessed.button(
-{
-    bottom: 0,
-    right: 0,
-    content: 'Logout',  
-    width: '20%',
-    height: '10%',
-    border: {
-        type: 'line'
-    },
-    align: 'center',
-    mouse: true,
-    style: {
-        fg: 'white',
-        bg: 'green',
-        border: {
-            fg: '#ffffff',
-        },
-        hover: {
-            bg: 'red'
-        }
-    }
-});
 
 function createMsg(kindStr, dataStr, toStr = 'all')
 {
@@ -343,28 +34,29 @@ function printMsg(jsonMsg)
     
     if(jsonMsg.kind === 'direct')
     {    
-        chatbox.pushLine(`{green-fg}[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${styledData} {/green-fg}`);
+        UI.chatbox.pushLine(`{green-fg}[${moment().format('h:mm a')}] [DM from ${jsonMsg.from} to ${jsonMsg.to}]: ${styledData} {/green-fg}`);
     }
     else if(jsonMsg.kind === 'error')
     {
-        chatbox.pushLine(`{red-fg}SERVER ERROR: ${jsonMsg.data}{/red-fg}`);         
+        UI.chatbox.pushLine(`{red-fg}SERVER ERROR: ${jsonMsg.data}{/red-fg}`);         
     }
     else if(jsonMsg.from === 'GABServer' || jsonMsg.kind === 'server')
     {
-        chatbox.pushLine(`{yellow-fg}SERVER MSG: ${jsonMsg.data}{/yellow-fg}`);
+        UI.chatbox.pushLine(`{yellow-fg}SERVER MSG: ${jsonMsg.data}{/yellow-fg}`);
     }
     else 
     {
-        chatbox.pushLine(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${styledData} `);
+        UI.chatbox.pushLine(`[${moment().format('h:mm a')}] ${jsonMsg.from}: ${styledData} `);
     }
     
-    chatbox.setScrollPerc(100);
-    mainScreen.render();
+    UI.chatbox.setScrollPerc(100);
+    UI.mainScreen.render();
 }
 
 function applyStyles(str)
 { 
-    styling.styles.forEach((elem) => {
+    styling.styles.forEach((elem) => 
+    {
         let allMatches = str.match(elem.expression);
         if(allMatches !== null)
         {
@@ -558,39 +250,31 @@ function sendMsg(conn, msg)
 function addUsers(obj)
 {
     let users = obj.data.split(',');
-    userListBox.setContent(''); 
+    UI.userListBox.setContent(''); 
     users.forEach((elem) => {
         if(elem !== username)
-            userListBox.pushLine(elem);
+            UI.userListBox.pushLine(elem);
     });
-    mainScreen.render();
+    UI.mainScreen.render();
 }
-
-
-function printJSON(obj)
-{
-    chatbox.pushLine(obj);
-    mainScreen.render();
-}
-
 
 function makeConnection()
 {
     const connection = new WebSocket(`${actualPath}/?username=${username}`);
     let sysUserlistCall = false;
-    userBox.setContent(`Logged in as ${username} `);
+    UI.userBox.setContent(`Logged in as ${username} `);
     let errorMsg;
     let errEvent = false;
     
-    mainScreen.append(chatbox);
-    mainScreen.append(msgInputBox);
-    mainScreen.append(enterButton);
-    mainScreen.append(userBox);
-    mainScreen.append(userListBox);
-    mainScreen.append(commandBox);
-    mainScreen.append(logoutButton);
-    mainScreen.title = `Chatroom connection: ${actualPath}`;
-    mainScreen.render();
+    UI.mainScreen.append(chatbox);
+    UI.mainScreen.append(msgInputBox);
+    UI.mainScreen.append(enterButton);
+    UI.mainScreen.append(userBox);
+    UI.mainScreen.append(userListBox);
+    UI.mainScreen.append(commandBox);
+    UI.mainScreen.append(logoutButton);
+    UI.mainScreen.title = `Chatroom connection: ${actualPath}`;
+    UI.mainScreen.render();
     
     connection.onclose = () => 
     {
@@ -598,11 +282,11 @@ function makeConnection()
             errorMsg = `${lastMessage.data}\n\n\nClick anywhere or press any key to end program.`;
         else if(!errEvent)
             errorMsg = `Server has terminated connection for unspecified reason.\n\n\nClick anywhere or press any key to end program.`;
-        enterButton.hide();
-        msgInputBox.hide();
-        mainScreen.append(terminatedMessage);
+        UI.enterButton.hide();
+        UI.msgInputBox.hide();
+        UI.mainScreen.append(terminatedMessage);
         
-        terminatedMessage.error(errorMsg, 0, restart);
+        terminatedMessage.error(errorMsg, 0, endApp);
     };
     
     connection.onerror = () =>
@@ -613,25 +297,24 @@ function makeConnection()
     
     connection.onopen = () =>
     {    
-        msgInputBox.focus();
+        UI.msgInputBox.focus();
         
-        enterButton.on('press', function() {
-           let input = msgInputBox.getValue();
-           msgInputBox.clearValue();
+        UI.enterButton.on('press', function() {
+           let input = UI.msgInputBox.getValue();
+           UI.msgInputBox.clearValue();
            sendMsg(connection, input);
         });
         
-        msgInputBox.key(['enter'], function(ch, key)  {
-            let input = msgInputBox.getValue();
-            msgInputBox.clearValue();
+        UI.msgInputBox.key(['enter'], function(ch, key)  {
+            let input = UI.msgInputBox.getValue();
+            UI.msgInputBox.clearValue();
             sendMsg(connection, input);
-            msgInputBox.focus();
+            UI.msgInputBox.focus();
         });   
     } 
     
     connection.onmessage = msg => 
     { 
-        //let serverStr = msg.data;
         let serverJSON = JSON.parse(msg.data);
         lastMessage = serverJSON;
         let pollAnsRegex = /^\\pollAns([0-9]+)$/;
@@ -697,77 +380,67 @@ function saveStyles()
     }
 }
 
-function restart()
+function endApp()
 {
     return process.exit(0);
-    /*
-    mainScreen.remove(terminatedMessage);
-    mainScreen.remove(chatbox);
-    mainScreen.remove(msgInputBox);
-    mainScreen.remove(enterButton);
-    mainScreen.remove(userBox);
-    mainScreen.remove(userListBox);
-    mainScreen.remove(logoutButton);
-    
-    getUsername(makeConnection);*/
 }
 
 function getUsername (callback)
 {
     usernameRegex = /^[A-Za-z0-9]{3,10}$/;
-    mainScreen.append(usernameForm);
-    pathField.setValue(defaultPath);
-    usernameField.clearValue();
-    mainScreen.title = 'Chatroom client login';
-    mainScreen.render();
+    UI.mainScreen.append(usernameForm);
+    UI.pathField.setValue(defaultPath);
+    UI.usernameField.clearValue();
+    UI.mainScreen.title = 'Chatroom client login';
+    UI.mainScreen.render();
     
-    usernameField.focus();
+    UI.usernameField.focus();
     
-    usernameField.on('press', function(ch, key) {
+    UI.usernameField.on('press', function(ch, key) {
         usernameField.focus();
     });
     
-    usernameField.on('keypress', function(ch, key)
+    UI.usernameField.on('keypress', function(ch, key)
     {   
-        if(usernameRegex.test(usernameField.getValue()))
+        if(usernameRegex.test(UI.usernameField.getValue()))
         {
             errText.hide();
-            usernameField.style.bg = '';
+            UI.usernameField.style.bg = '';
         }
         else
         {
             errText.show();
-            usernameField.style.bg = 'red';
+            UI.usernameField.style.bg = 'red';
         }
         
     });
     
-    usernameField.key(['enter'], function(ch, key)  {
-            pathField.focus();
+    UI.usernameField.key(['enter'], function(ch, key)  {
+            UI.pathField.focus();
     }); 
     
-    pathField.on('press', function(ch, key) {
-        pathField.focus();
+    UI.pathField.on('press', function(ch, key) {
+            UI.pathField.focus();
     });
     
-    pathField.key(['enter'], function(ch, key)  {
-            submitButton.focus();
+    UI.pathField.key(['enter'], function(ch, key)  {
+            UI.submitButton.focus();
     }); 
     
-    cancelButton.on('press', function() {
-        return process.exit(0);
+    UI.cancelButton.on('press', function() {
+            endApp();
     });
     
-    submitButton.on('press', function() {
+    UI.submitButton.on('press', function() {
         
-        if(usernameRegex.test(usernameField.getValue()))
+        if(usernameRegex.test(UI.usernameField.getValue()))
         {
             errText.hide();
-            usernameField.style.bg = '';
-            username = usernameField.getValue();
-            actualPath = pathField.getValue();
+            UI.usernameField.style.bg = '';
+            username = UI.usernameField.getValue();
+            actualPath = UI.pathField.getValue();
         
-            mainScreen.remove(usernameForm);
+            UI.mainScreen.remove(usernameForm);
             
 
             callback();
@@ -775,20 +448,20 @@ function getUsername (callback)
         else
         {
             errText.show();
-            usernameField.style.bg = 'red';
+            UI.usernameField.style.bg = 'red';
         }
     });
     
 }
 
 // Quit on Escape, q, or Control-C.
-mainScreen.key(['escape', 'q', 'C-c'], function(ch, key) 
+UI.mainScreen.key(['escape', 'q', 'C-c'], function(ch, key) 
 {
-  return process.exit(0);
+    endApp();
 });
 
-logoutButton.on('press', function() {
-    return process.exit(0);
+UI.logoutButton.on('press', function() {
+    endApp();
 });
 
 getUsername(makeConnection);
