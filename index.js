@@ -207,6 +207,10 @@ let userBox = blessed.box (
     top: 'right',
     right: 0,
     label: 'User Info',
+    alwaysScroll:true,
+    scrollable: true,
+    mouse: true,
+    tags: true,
     width: '30%',
     height: '15%',
     border: {
@@ -639,7 +643,7 @@ function makeConnection() // Connect to server and listen for events
         msgInputBox.hide();
         mainScreen.append(terminatedMessage);
         
-        terminatedMessage.error(errorMsg, 0, restart);
+        terminatedMessage.error(errorMsg, 0, endApp);
     };
     
     connection.onerror = () =>
